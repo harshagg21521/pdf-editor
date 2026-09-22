@@ -34,7 +34,7 @@ interface SavedPdf {
     ToastModule,
     ConfirmDialogModule,
   ],
-  providers: [MessageService, ConfirmationService, NgxExtendedPdfViewerModule],
+  providers: [MessageService, ConfirmationService, NgxExtendedPdfViewerService],
   templateUrl: './pdf-editor-demo.component.html',
 })
 export class PdfEditorDemoComponent {
