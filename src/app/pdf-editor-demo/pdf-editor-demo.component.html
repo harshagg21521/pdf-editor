@@ -1,0 +1,192 @@
+<div class="p-4">
+  <!-- Header -->
+  <div class="flex justify-content-between align-items-center mb-3">
+    <div>
+      <h2 class="m-0">PDF Editor Demo</h2>
+
+      <small class="text-color-secondary">
+        Upload, edit and save PDF documents
+      </small>
+    </div>
+
+    <div class="flex gap-2">
+      <p-button
+        label="Upload PDF"
+        icon="pi pi-upload"
+        severity="secondary"
+        (onClick)="fileInput.click()"
+      >
+      </p-button>
+
+      <input
+        #fileInput
+        type="file"
+        accept="application/pdf"
+        hidden
+        (change)="onPdfSelected($event)"
+      />
+
+      @if (pdfSrc()) {
+        <p-button
+          label="Save Edited PDF"
+          icon="pi pi-save"
+          (onClick)="savePdf()"
+        >
+        </p-button>
+      }
+    </div>
+  </div>
+
+  <!-- PDF Viewer -->
+
+  @if (pdfSrc()) {
+    <p-card>
+      <div class="flex align-items-center gap-2 mb-3">
+        <i class="pi pi-file-pdf text-red-500"></i>
+
+        <span class="font-medium">
+          {{ filename() }}
+        </span>
+
+        <p-tag value="Editing" severity="info"> </p-tag>
+      </div>
+
+      <ngx-extended-pdf-viewer
+        [src]="pdfSrc()"
+        [height]="'70vh'"
+        [handTool]="false"
+        [showDrawEditor]="true"
+        [showDownloadButton]="true"
+        [showPrintButton]="true"
+        [showSidebarButton]="false"
+        [showFindButton]="false"
+        [showPresentationModeButton]="false"
+        [showOpenFileButton]="false"
+        [showPropertiesButton]="false"
+        [showRotateButton]="false"
+        [showHandToolButton]="true"
+        [textLayer]="true"
+        [filenameForDownload]="filename()"
+      >
+      </ngx-extended-pdf-viewer>
+    </p-card>
+  }
+
+  <!-- Empty State -->
+
+  @if (!pdfSrc()) {
+    <p-card>
+      <div
+        class="flex flex-column align-items-center justify-content-center p-6"
+      >
+        <i class="pi pi-file-pdf text-4xl text-color-secondary mb-3"> </i>
+
+        <span class="font-medium mb-2"> No PDF selected </span>
+
+        <small class="text-color-secondary mb-3">
+          Upload a PDF to start editing
+        </small>
+
+        <p-button
+          label="Upload PDF"
+          icon="pi pi-upload"
+          (onClick)="fileInput.click()"
+        >
+        </p-button>
+      </div>
+    </p-card>
+  }
+
+  <!-- Saved PDFs -->
+
+  <p-card class="mt-3">
+    <div class="flex justify-content-between align-items-center mb-3">
+      <div>
+        <h3 class="m-0">Saved Edited PDFs</h3>
+
+        <small class="text-color-secondary">
+          PDFs edited and saved from this demo
+        </small>
+      </div>
+
+      <p-tag [value]="savedPdfs().length + ' files'" severity="secondary">
+      </p-tag>
+    </div>
+
+    @if (savedPdfs().length > 0) {
+      <p-table [value]="savedPdfs()" size="small">
+        <ng-template pTemplate="header">
+          <tr>
+            <th>File Name</th>
+
+            <th>Size</th>
+
+            <th>Saved At</th>
+
+            <th>Actions</th>
+          </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-pdf>
+          <tr>
+            <td>
+              <div class="flex align-items-center gap-2">
+                <i class="pi pi-file-pdf text-red-500"></i>
+
+                <span>
+                  {{ pdf.name }}
+                </span>
+              </div>
+            </td>
+
+            <td>{{ (pdf.size / 1024).toFixed(1) }} KB</td>
+
+            <td>
+              {{ pdf.savedAt | date: "dd MMM yyyy, hh:mm a" }}
+            </td>
+
+            <td>
+              <div class="flex gap-2">
+                <p-button
+                  label="View"
+                  icon="pi pi-eye"
+                  size="small"
+                  severity="secondary"
+                  [outlined]="true"
+                  (onClick)="viewPdf(pdf)"
+                >
+                </p-button>
+
+                <p-button
+                  label="Delete"
+                  icon="pi pi-trash"
+                  size="small"
+                  severity="danger"
+                  [outlined]="true"
+                  (onClick)="deletePdf(pdf)"
+                >
+                </p-button>
+              </div>
+            </td>
+          </tr>
+        </ng-template>
+      </p-table>
+    }
+
+    @if (savedPdfs().length === 0) {
+      <div class="text-center p-5">
+        <i class="pi pi-folder-open text-3xl text-color-secondary"> </i>
+
+        <p class="mb-1">No edited PDFs yet</p>
+
+        <small class="text-color-secondary">
+          Upload and edit a PDF, then save it to see it here.
+        </small>
+      </div>
+    }
+  </p-card>
+</div>
+
+<p-toast></p-toast>
+
+<p-confirmdialog></p-confirmdialog>
