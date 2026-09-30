@@ -2,9 +2,9 @@ import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
-    path: 'show',
+    path: '',
     loadComponent: () =>
-      import('./pdf-editor-demo.component').then((m) => m.PdfEditorDemoComponent),
+      import('./search-form.component').then((m) => m.SearchFormComponent),
     data: {title: 'IPD Admitted Patients'},
   },
 ];

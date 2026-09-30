@@ -1,10 +1,11 @@
 import { Component } from '@angular/core';
-import { PdfEditorDemoComponent } from './pdf-editor-demo/pdf-editor-demo.component';
+import { SearchFormComponent } from './search-form/search-form.component';
+import { RouterOutlet } from '@angular/router';
 
 
 @Component({
   selector: 'app-root',
-  imports: [PdfEditorDemoComponent],
+  imports: [RouterOutlet],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css'
 })

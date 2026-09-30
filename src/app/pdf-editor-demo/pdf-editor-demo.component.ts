@@ -1,18 +1,29 @@
 import { CommonModule } from '@angular/common';
-import { Component, signal } from '@angular/core';
 import {
-  NgxExtendedPdfViewerModule,
-  NgxExtendedPdfViewerService,
-} from 'ngx-extended-pdf-viewer';
+  Component,
+  inject,
+  Input,
+  OnInit,
+  signal,
+  ViewChild,
+} from '@angular/core';
 
-import { ButtonModule } from 'primeng/button';
-import { CardModule } from 'primeng/card';
 import { TableModule } from 'primeng/table';
 import { TagModule } from 'primeng/tag';
 import { ToastModule } from 'primeng/toast';
 import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { CardModule } from 'primeng/card';
+import { ButtonModule } from 'primeng/button';
 
 import { MessageService, ConfirmationService } from 'primeng/api';
+
+import {
+  NgxExtendedPdfViewerService,
+  NgxExtendedPdfViewerModule,
+  NgxExtendedPdfViewerComponent,
+  PdfImageParameters,
+} from 'ngx-extended-pdf-viewer';
+import { ActivatedRoute, Router } from '@angular/router';
 
 interface SavedPdf {
   name: string;
@@ -26,60 +37,81 @@ interface SavedPdf {
   standalone: true,
   imports: [
     CommonModule,
-    NgxExtendedPdfViewerModule,
     ButtonModule,
-    CardModule,
     TableModule,
     TagModule,
     ToastModule,
     ConfirmDialogModule,
+    NgxExtendedPdfViewerModule,
+    CardModule,
   ],
-  providers: [MessageService, ConfirmationService, NgxExtendedPdfViewerService],
+  providers: [MessageService, ConfirmationService],
   templateUrl: './pdf-editor-demo.component.html',
 })
-export class PdfEditorDemoComponent {
-  pdfSrc = signal<string>('');
+export class PdfEditorDemoComponent implements OnInit {
+  private activatedRoute = inject(ActivatedRoute);
+  private router = inject(Router);
 
+  private savedImagePath = '/my-saved-image.png';
+
+  pdfUrl: string = '';
+
+  imageParams: PdfImageParameters = {
+    urlOrDataUrl: '',
+    page: 0,
+    left: 100,
+    bottom: 200,
+    right: 250,
+    top: 300,
+    rotation: 0,
+  };
+
+  pdfSrc = signal<string>('');
+  originalFilename = signal<string>('');
   filename = signal<string>('');
 
   savedPdfs = signal<SavedPdf[]>([]);
+
   IPD: string = 'IPD-MLD-2026-2027-2857';
   OT_ID: string = 'OT-ID-1';
 
-  private selectedFile: File | null = null;
+  private pdfViewerService = inject(NgxExtendedPdfViewerService);
 
   private directoryHandle: FileSystemDirectoryHandle | null = null;
 
-  constructor(private pdfViewerService: NgxExtendedPdfViewerService) {}
+  @ViewChild('pdfViewer')
+  public pdfViewerComponent!: NgxExtendedPdfViewerComponent;
 
-  /**
-   * Select original PDF
-   */
-  onPdfSelected(event: Event): void {
-    const input = event.target as HTMLInputElement;
-
-    if (!input.files || input.files.length === 0) {
-      return;
-    }
-
-    const file = input.files[0];
-
-    if (file.type !== 'application/pdf') {
-      alert('Please select a PDF file.');
-      return;
-    }
-
-    this.selectedFile = file;
-
-    this.filename.set(file.name.replace(/\.pdf$/i, '') + '-edited.pdf');
-
-    const url = URL.createObjectURL(file);
-
-    this.pdfSrc.set(url);
+  ngOnInit(): void {
+    this.pdfUrl = this.activatedRoute.snapshot.paramMap.get('url') || '';
+    // this.pdfUrl = '/ot-form-1.pdf';
+    this.loadPdf(this.pdfUrl);
   }
 
   /**
-   * Select the folder where edited PDFs will be stored.
+   * Load PDF from project/public folder
+   */
+  loadPdf(url: string): void {
+    this.pdfSrc.set(url);
+
+    const fileName = this.getFileNameFromUrl(url);
+    const pdfName = fileName.replace(/\.pdf$/i, '') + '.pdf';
+
+    this.originalFilename.set(pdfName);
+    this.filename.set(pdfName);
+  }
+
+  /**
+   * Extract file name from URL
+   */
+  private getFileNameFromUrl(url: string): string {
+    const cleanUrl = url.split('?')[0];
+
+    return cleanUrl.substring(cleanUrl.lastIndexOf('/') + 1);
+  }
+
+  /**
+   * Select folder where edited PDFs will be stored
    */
   async selectSaveFolder(): Promise<void> {
     try {
@@ -98,7 +130,7 @@ export class PdfEditorDemoComponent {
    */
   async savePdf(): Promise<void> {
     if (!this.pdfSrc()) {
-      alert('Please upload a PDF first.');
+      alert('Please open a PDF first.');
       return;
     }
 
@@ -111,13 +143,6 @@ export class PdfEditorDemoComponent {
     }
 
     try {
-      /**
-       * Get the CURRENT PDF from
-       * ngx-extended-pdf-viewer.
-       *
-       * This is important because it contains
-       * the changes made using Draw Editor.
-       */
       const pdfBlob = await this.pdfViewerService.getCurrentDocumentAsBlob();
 
       if (!pdfBlob) {
@@ -125,52 +150,51 @@ export class PdfEditorDemoComponent {
         return;
       }
 
-      /**
-       * Create file inside selected folder.
-       */
+      // Generate final filename
+      const savedFileName = this.renamePdfFile(this.originalFilename());
+
+      // Create file using final filename
       const fileHandle = await this.directoryHandle.getFileHandle(
-        this.filename(),
+        savedFileName,
         {
           create: true,
         },
       );
 
-      /**
-       * Write edited PDF.
-       */
+      // Write PDF
       const writable = await fileHandle.createWritable();
 
       await writable.write(pdfBlob);
-
       await writable.close();
 
-      /**
-       * Add/update table entry.
-       */
+      // Update table
       const existing = this.savedPdfs().filter(
-        (pdf) => pdf.name !== this.filename(),
+        (pdf) => pdf.name !== savedFileName,
       );
 
       this.savedPdfs.set([
         ...existing,
         {
-          name: this.renamePdfFile(this.filename()),
+          name: savedFileName,
           size: pdfBlob.size,
           savedAt: new Date(),
           handle: fileHandle,
         },
       ]);
 
+      // Keep filename consistent
+      this.filename.set(savedFileName);
+
       alert('Edited PDF saved successfully.');
+      this.router.navigate(['all']);
     } catch (error) {
       console.error('Error saving PDF:', error);
-
       alert('Failed to save PDF.');
     }
   }
 
   /**
-   * Open a saved PDF from the selected folder.
+   * Open saved PDF
    */
   async viewPdf(pdf: SavedPdf): Promise<void> {
     try {
@@ -189,7 +213,7 @@ export class PdfEditorDemoComponent {
   }
 
   /**
-   * Delete saved PDF.
+   * Delete saved PDF
    */
   async deletePdf(pdf: SavedPdf): Promise<void> {
     if (!this.directoryHandle) {
@@ -203,10 +227,6 @@ export class PdfEditorDemoComponent {
         this.savedPdfs().filter((item) => item.name !== pdf.name),
       );
 
-      /**
-       * If currently opened PDF is deleted,
-       * clear viewer.
-       */
       if (this.filename() === pdf.name) {
         this.pdfSrc.set('');
         this.filename.set('');
@@ -215,6 +235,22 @@ export class PdfEditorDemoComponent {
       console.error('Error deleting PDF:', error);
 
       alert('Unable to delete PDF.');
+    }
+  }
+
+  public async addSavedImage(): Promise<void> {
+    try {
+      const response = await fetch(this.savedImagePath);
+      const blob = await response.blob();
+      this.imageParams.urlOrDataUrl = this.savedImagePath;
+
+      if (this.pdfViewerComponent) {
+        this.pdfViewerService.addImageToAnnotationLayer(this.imageParams);
+      } else {
+        console.error('PDF Viewer component or service is not ready.');
+      }
+    } catch (error) {
+      console.error('Failed to load project image:', error);
     }
   }
 
