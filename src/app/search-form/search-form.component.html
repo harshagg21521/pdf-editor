@@ -1,7 +1,7 @@
-<div class="min-h-screen flex justify-center bg-gray-200 p-3">
-  <div class="w-full max-w-xl px-4">
+<div class="min-h-screen flex bg-gray-200 p-3">
+  <div class="max-w-xl px-4">
     <p-select
-      class="w-100"
+      class="w-200"
       [options]="forms"
       [(ngModel)]="selectedForm"
       optionLabel="name"
@@ -11,7 +11,7 @@
       filterBy="name"
       [showClear]="true"
       (onChange)="onFormSelect($event)"
-      [style]="{ 'border': '1px solid black' }"
+      [style]="{ border: '1px solid black' }"
     >
     </p-select>
   </div>
